@@ -26,7 +26,7 @@ def assert_path_exists(path, errorMessage):
 
 
 def assert_external_toolresult(name, result, expected):
-    if result.returncode is not 0:
+    if result.returncode != 0:
         message = "    ERROR: [{name}] signing/verifying library. OUTPUT: {output}".format(name=name, output=str(result.stdout))
         raise Exception(message)
     else:
@@ -57,7 +57,7 @@ def sign_java_library(library, name):
 
 def sign_dotnet_library(library, name):
     result = subprocess.run([str(netsignerPath), "verify", "/pa", library.name], capture_output=True)
-    if result.returncode is not 0:
+    if result.returncode != 0:
         result = subprocess.run(
             [str(netsignerPath), "sign", "/fd", "sha256", "/f", str(keystorePath), "/p", keystorePassword,
              library.name], capture_output=True)
