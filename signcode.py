@@ -6,6 +6,8 @@ import getpass
 import os
 import argparse
 from cryptography.hazmat.primitives.serialization import pkcs12
+from cryptography.hazmat.primitives import hashes
+from datetime import datetime, timezone
 
 DEFAULT_VALUES = {
     "src": pathlib.Path.home() / "Desktop/zips",
@@ -20,23 +22,21 @@ DEFAULT_VALUES = {
 PROXY_HOST = "-J-Dhttp.proxyHost=proxy.bcssksz.local"
 PROXY_PORT = "-J-Dhttp.proxyPort=3128"
 
-OKGREEN = '\033[92m'
-WARNING = '\033[93m'
-
 
 def assert_path_exists(path, error_message):
     if not path.exists():
-        message = f"ERROR : {error_message} [{str(path)}]"
-        raise AssertionError(message)
+        print("ERROR", f"{error_message} [{str(path)}]")
+        return False
+    return True
 
 
 def assert_external_toolresult(name, result, expected):
     if result.returncode != 0:
-        message = f"{WARNING}    ERROR: [{name}] signing/verifying library. OUTPUT: {str(result.stdout)}"
+        message = f"    ERROR: [{name}] signing/verifying library. OUTPUT: {str(result.stdout)}"
         raise AssertionError(message)
     else:
         if expected not in str(result.stdout):
-            print("    ", "WARN", WARNING, f"[{name}] signing/verifying library. OUTPUT: {str(result.stdout)}")
+            print("    ", "WARN", f"[{name}] signing/verifying library. OUTPUT: {str(result.stdout)}")
 
 
 def is_java_library(path):
@@ -72,7 +72,7 @@ def sign_dotnet_library(lib, name, signtool_path, keystore_path, key_alias, time
         result = subprocess.run([str(signtool_path), "verify", "/pa", lib.name], capture_output=True)
         assert_external_toolresult(name, result, "")
     else:
-        print("    ", "WARN", WARNING, f"[{name}] Library appears to be already signed, it will not be signed again")
+        print("    ", "WARN", f"[{name}] Library appears to be already signed, it will not be signed again")
     return lib
 
 
@@ -92,25 +92,36 @@ if __name__ == "__main__":
     for key, value in vars(args).items():
         print(" ", key.ljust(12), "=", value)
 
-    assert_path_exists(args.src, "Unsigned folder does not exist, create it or change it")
-    assert_path_exists(args.dst, "Folder for signed libraries does not exist, create it or change it")
-    assert_path_exists(args.keystore, "No keystore found at the given location")
-    assert_path_exists(args.jarsigner, "JDK tool jarSigner can't be found, this file is part of any JDK installation")
-    assert_path_exists(args.signtool, "Signtool can't be found, can be downloaded from Microsoft website")
+    paths = [
+        (args.src, "Unsigned folder does not exist, create it or change it"),
+        (args.dst, "Folder for signed libraries does not exist, create it or change it"),
+        (args.keystore, "No keystore found at the given location"),
+        #(args.jarsigner, "JDK tool jarSigner can't be found, this file is part of any JDK installation"),
+        #(args.signtool, "Signtool can't be found, can be downloaded from Microsoft website")
+    ]
+
+    if not all([assert_path_exists(path, error_message) for (path, error_message) in paths]):
+        raise AssertionError("ERROR: Some necessary locations are missing")
 
 
     if len(os.listdir(args.src)) > 0:
-        print("WARN", WARNING, f"destination folder does not seem to be empty [{str(args.dst)}]")
+        print("WARN", f"destination folder does not seem to be empty [{str(args.dst)}]")
 
+    print("INFO", f"Keystore access and content will now be evaluated")
     keystorePassword = getpass.getpass("Keystore password : ")
-
     with open(args.keystore, 'rb') as p12:
         keystore = pkcs12.load_pkcs12(p12.read(), keystorePassword.encode())
-        assert keystore.key
-        assert keystore.cert
-        print(keystore.cert.friendly_name)
-        print(keystore.cert.certificate.subject)
+        assert keystore.key, "No private key in this P12, can't sign"
+        assert keystore.cert, "Can't find certificate in this P12"
+        assert keystore.cert.friendly_name == args.alias.encode(), "Incorrect alias for the certificate"
+        assert keystore.cert.certificate.fingerprint(hashes.SHA256()).hex() == "3fb5cedac685b02604f5a79211c6eff4d235bd62061a0da80d4cb0a16dce2828", "Unknown certificate, if new one please update fingerprint"
+        expiresIn = keystore.cert.certificate.not_valid_after.astimezone(timezone.utc) - datetime.now(timezone.utc)
 
+        if expiresIn.days < 90:
+            print("WARN", f"Signing certificate expires in {expiresIn.days} days")
+        else:
+            print("INFO", f"Signing certificate expires in {expiresIn.days} days")
+    print("INFO", f"Keystore sanity check successful")
 
     cache = {}
     globalCacheCounter = 0
