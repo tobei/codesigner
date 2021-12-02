@@ -5,6 +5,7 @@ import subprocess
 import getpass
 import os
 import argparse
+from cryptography.hazmat.primitives.serialization import pkcs12
 
 DEFAULT_VALUES = {
     "src": pathlib.Path.home() / "Desktop/zips",
@@ -22,16 +23,17 @@ PROXY_PORT = "-J-Dhttp.proxyPort=3128"
 OKGREEN = '\033[92m'
 WARNING = '\033[93m'
 
+
 def assert_path_exists(path, error_message):
     if not path.exists():
         message = f"ERROR : {error_message} [{str(path)}]"
-        raise FileNotFoundError(message)
+        raise AssertionError(message)
 
 
 def assert_external_toolresult(name, result, expected):
     if result.returncode != 0:
         message = f"{WARNING}    ERROR: [{name}] signing/verifying library. OUTPUT: {str(result.stdout)}"
-        raise Exception(message)
+        raise AssertionError(message)
     else:
         if expected not in str(result.stdout):
             print("    ", "WARN", WARNING, f"[{name}] signing/verifying library. OUTPUT: {str(result.stdout)}")
@@ -100,9 +102,18 @@ if __name__ == "__main__":
     if len(os.listdir(args.src)) > 0:
         print("WARN", WARNING, f"destination folder does not seem to be empty [{str(args.dst)}]")
 
+    keystorePassword = getpass.getpass("Keystore password : ")
+
+    with open(args.keystore, 'rb') as p12:
+        keystore = pkcs12.load_pkcs12(p12.read(), keystorePassword.encode())
+        assert keystore.key
+        assert keystore.cert
+        print(keystore.cert.friendly_name)
+        print(keystore.cert.certificate.subject)
+
+
     cache = {}
     globalCacheCounter = 0
-    keystorePassword = getpass.getpass("Keystore password : ")
 
     for assembly in args.src.glob('*.zip'):
         print("INFO", f"[{assembly.name}] processing assembly file")
