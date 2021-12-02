@@ -86,8 +86,9 @@ if __name__ == "__main__":
     parser.set_defaults(**DEFAULT_VALUES)
     args = parser.parse_args()
 
+    print("Signing configuration:")
     for key, value in vars(args).items():
-        print(key, "=", value)
+        print(" ", key.ljust(12), "=", value)
 
     assert_path_exists(args.src, "Unsigned folder does not exist, create it or change it")
     assert_path_exists(args.dst, "Folder for signed libraries does not exist, create it or change it")
