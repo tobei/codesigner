@@ -20,19 +20,19 @@ PROXY_HOST = "-J-Dhttp.proxyHost=proxy.bcssksz.local"
 PROXY_PORT = "-J-Dhttp.proxyPort=3128"
 
 
-def assert_path_exists(path, errorMessage):
+def assert_path_exists(path, error_message):
     if not path.exists():
-        message = "ERROR : {errorMessage} [{path}]".format(errorMessage=errorMessage, path=str(path))
+        message = f"ERROR : {error_message} [{str(path)}]"
         raise FileNotFoundError(message)
 
 
 def assert_external_toolresult(name, result, expected):
     if result.returncode != 0:
-        message = "    ERROR: [{name}] signing/verifying library. OUTPUT: {output}".format(name=name, output=str(result.stdout))
+        message = f"    ERROR: [{name}] signing/verifying library. OUTPUT: {str(result.stdout)}"
         raise Exception(message)
     else:
         if expected not in str(result.stdout):
-            print("    WARN: [{name}] signing/verifying library. OUTPUT: {output}".format(name=name, output=str(result.stdout)))
+            print(f"    WARN: [{name}] signing/verifying library. OUTPUT: {str(result.stdout)}")
 
 
 def is_java_library(path):
@@ -43,33 +43,33 @@ def is_dotnet_library(path):
     return path.suffix == '.dll'
 
 
-def sign_java_library(library, name, jarSignerPath, keystorePath, keyAlias, keystorePassword, tsa):
-    result = subprocess.run([str(jarSignerPath),
+def sign_java_library(lib, name, jarsigner_path, keystore_path, key_alias, keystore_password, timestamp_url):
+    result = subprocess.run([str(jarsigner_path),
                              "-storetype", "pkcs12", "-strict",
-                             "-keystore", str(keystorePath), "-storepass", keystorePassword,
-                             "-keypass", keystorePassword,
-                             "-tsa", tsa, PROXY_HOST, PROXY_PORT,
-                             library.name, keyAlias], capture_output=True)
+                             "-keystore", str(keystore_path), "-storepass", keystore_password,
+                             "-keypass", keystore_password,
+                             "-tsa", timestamp_url, PROXY_HOST, PROXY_PORT,
+                             lib.name, key_alias], capture_output=True)
     assert_external_toolresult(name, result, "jar signed")
-    result = subprocess.run([str(jarSignerPath), "-verify", "-storetype", "pkcs12", library.name], capture_output=True)
+    result = subprocess.run([str(jarsigner_path), "-verify", "-storetype", "pkcs12", lib.name], capture_output=True)
     assert_external_toolresult(name, result, "jar verified")
-    return library
+    return lib
 
 
-def sign_dotnet_library(library, name, netsignerPath, keystorePath, keystorePassword, tsa):
-    result = subprocess.run([str(netsignerPath), "verify", "/pa", library.name], capture_output=True)
+def sign_dotnet_library(lib, name, signtool_path, keystore_path, key_alias, timestamp_url):
+    result = subprocess.run([str(signtool_path), "verify", "/pa", lib.name], capture_output=True)
     if result.returncode != 0:
         result = subprocess.run(
-            [str(netsignerPath), "sign", "/fd", "sha256", "/f", str(keystorePath), "/p", keystorePassword,
-             library.name], capture_output=True)
+            [str(signtool_path), "sign", "/fd", "sha256", "/f", str(keystore_path), "/p", key_alias,
+             lib.name], capture_output=True)
         assert_external_toolresult(name, result, "")
-        result = subprocess.run([str(netsignerPath), "timestamp", "/t", tsa, library.name], capture_output=True)
+        result = subprocess.run([str(signtool_path), "timestamp", "/t", timestamp_url, lib.name], capture_output=True)
         assert_external_toolresult(name, result, "")
-        result = subprocess.run([str(netsignerPath), "verify", "/pa", library.name], capture_output=True)
+        result = subprocess.run([str(signtool_path), "verify", "/pa", lib.name], capture_output=True)
         assert_external_toolresult(name, result, "")
     else:
-        print("    WARN: [{name}] Library appears to be already signed, it will not be signed again".format(name=name))
-    return library
+        print(f"    WARN: [{name}] Library appears to be already signed, it will not be signed again")
+    return lib
 
 
 if __name__ == "__main__":
@@ -80,7 +80,7 @@ if __name__ == "__main__":
     parser.add_argument('--alias', help='key alias in the keystore', type=str, default="codesigning")
     parser.add_argument('--jarsigner', help='java signing tool location: jarsigner.exe', type=pathlib.Path)
     parser.add_argument('--signtool', help='.NET signing tool location: signtool.exe', type=pathlib.Path)
-    parser.add_argument('--tsa', help='public free timestamping server', type=str)
+    parser.add_argument('--tsa', help='public free timestamping server url', type=str)
     parser.set_defaults(**DEFAULT_VALUES)
     args = parser.parse_args()
 
@@ -92,14 +92,14 @@ if __name__ == "__main__":
 
 
     if len(os.listdir(args.src)) > 0:
-        print("WARN: destination folder does not seem to be empty [{path}]".format(path=str(args.dst)))
+        print(f"WARN: destination folder does not seem to be empty [{str(args.dst)}]")
 
     cache = {}
     globalCacheCounter = 0
     keystorePassword = getpass.getpass("Keystore password : ")
 
     for assembly in args.src.glob('*.zip'):
-        print("INFO: [{assembly}] processing assembly file".format(assembly=assembly.name))
+        print(f"INFO: [{assembly.name}] processing assembly file")
         with zipfile.ZipFile(assembly, mode='r') as sourceZip, zipfile.ZipFile(args.dst / assembly.name, mode='x', mpression=zipfile.ZIP_DEFLATED, compresslevel=9) as targetZip:
             cacheCounter = 0
             signedCounter = 0
@@ -114,7 +114,7 @@ if __name__ == "__main__":
                             library = tempfile.NamedTemporaryFile(delete=False)
                             library.write(sourceZip.read(zipEntry))
                             library.close()
-                            print("  INFO: [{name}] signing library".format(name=zipEntryPath.name))
+                            print(f"  INFO: [{zipEntryPath.name}] signing library")
                             cache[zipEntry.CRC] = sign_java_library(library, zipEntryPath.name, args.jarsigner, args.keystore, args.alias, keystorePassword, args.tsa) if is_java_library(zipEntryPath) else sign_dotnet_library(library, zipEntryPath.name, args.signtool, args.keystore, args.alias, keystorePassword, args.tsa)
                             signedCounter += 1
                         with open(library.name, 'rb') as library:
@@ -122,6 +122,5 @@ if __name__ == "__main__":
                     else:
                         targetZip.writestr(zipEntry.filename, sourceZip.read(zipEntry))
             globalCacheCounter += cacheCounter
-            print("INFO: [{assembly}] finished processing assembly file. Signed: {signed}, from cache: {cached}".format(
-                assembly=assembly.name, signed=signedCounter, cached=cacheCounter))
-    print("INFO: All Done ! Signed {signed} libraries, {cached} from cache".format(signed=len(cache), cached=globalCacheCounter))
+            print(f"INFO: [{assembly.name}] finished processing assembly file. Signed: {signedCounter}, from cache: {cacheCounter}")
+    print(f"INFO: All Done ! Signed {len(cache)} libraries, {globalCacheCounter} from cache")
