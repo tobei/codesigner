@@ -6,6 +6,16 @@ import getpass
 import os
 import argparse
 
+DEFAULT_VALUES = {
+    "src": pathlib.Path.home() / "Desktop/zips",
+    "dst": pathlib.Path.home() / "Desktop/signed_zips",
+    "keystore": pathlib.Path("F:/SignProcess/JWS/codesigning.p12"),
+    "alias": "codesigning",
+    "jarsigner": pathlib.Path('C:/Program Files/Java/jdk1.8.0_192/bin/jarsigner.exe'),
+    "signtool": pathlib.Path('C:/Program Files (x86)/Windows Kits/10/Tools/bin/i386/signtool.exe'),
+    "tsa": "http://timestamp.globalsign.com/scripts/timestamp.dll"
+}
+
 PROXY_HOST = "-J-Dhttp.proxyHost=proxy.bcssksz.local"
 PROXY_PORT = "-J-Dhttp.proxyPort=3128"
 
@@ -64,13 +74,14 @@ def sign_dotnet_library(library, name, netsignerPath, keystorePath, keystorePass
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog="signcode", description='signs java libraries for release for Java and .NET')
-    parser.add_argument('--src', help='folder containing assemblies to be signed', type=pathlib.Path, default=pathlib.Path.home() / "Desktop/zips")
-    parser.add_argument('--dst', help='folder to save signed assemblies', type=pathlib.Path, default=pathlib.Path.home() / "Desktop/signed_zips")
-    parser.add_argument('--keystore', help='keystore location .p12 file', type=pathlib.Path, default=pathlib.Path("F:/SignProcess/JWS/codesigning.p12"))
+    parser.add_argument('--src', help='folder containing assemblies to be signed', type=pathlib.Path)
+    parser.add_argument('--dst', help='folder to save signed assemblies', type=pathlib.Path)
+    parser.add_argument('--keystore', help='keystore location .p12 file', type=pathlib.Path)
     parser.add_argument('--alias', help='key alias in the keystore', type=str, default="codesigning")
-    parser.add_argument('--jarsigner', help='java signing tool location: jarsigner.exe', type=pathlib.Path, default=pathlib.Path('C:/Program Files/Java/jdk1.8.0_192/bin/jarsigner.exe'))
-    parser.add_argument('--signtool', help='.NET signing tool location: signtool.exe', type=pathlib.Path, default=pathlib.Path('C:/Program Files (x86)/Windows Kits/10/Tools/bin/i386/signtool.exe'))
-    parser.add_argument('--tsa', help='public free timestamping server', type=str, default="http://timestamp.globalsign.com/scripts/timestamp.dll")
+    parser.add_argument('--jarsigner', help='java signing tool location: jarsigner.exe', type=pathlib.Path)
+    parser.add_argument('--signtool', help='.NET signing tool location: signtool.exe', type=pathlib.Path)
+    parser.add_argument('--tsa', help='public free timestamping server', type=str)
+    parser.set_defaults(**DEFAULT_VALUES)
     args = parser.parse_args()
 
     assert_path_exists(args.src, "Unsigned folder does not exist, you should be using")
