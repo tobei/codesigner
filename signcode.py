@@ -19,6 +19,8 @@ DEFAULT_VALUES = {
 PROXY_HOST = "-J-Dhttp.proxyHost=proxy.bcssksz.local"
 PROXY_PORT = "-J-Dhttp.proxyPort=3128"
 
+OKGREEN = '\033[92m'
+WARNING = '\033[93m'
 
 def assert_path_exists(path, error_message):
     if not path.exists():
@@ -28,11 +30,11 @@ def assert_path_exists(path, error_message):
 
 def assert_external_toolresult(name, result, expected):
     if result.returncode != 0:
-        message = f"    ERROR: [{name}] signing/verifying library. OUTPUT: {str(result.stdout)}"
+        message = f"{WARNING}    ERROR: [{name}] signing/verifying library. OUTPUT: {str(result.stdout)}"
         raise Exception(message)
     else:
         if expected not in str(result.stdout):
-            print(f"    WARN: [{name}] signing/verifying library. OUTPUT: {str(result.stdout)}")
+            print("    ", "WARN", WARNING, f"[{name}] signing/verifying library. OUTPUT: {str(result.stdout)}")
 
 
 def is_java_library(path):
@@ -68,7 +70,7 @@ def sign_dotnet_library(lib, name, signtool_path, keystore_path, key_alias, time
         result = subprocess.run([str(signtool_path), "verify", "/pa", lib.name], capture_output=True)
         assert_external_toolresult(name, result, "")
     else:
-        print(f"    WARN: [{name}] Library appears to be already signed, it will not be signed again")
+        print("    ", "WARN", WARNING, f"[{name}] Library appears to be already signed, it will not be signed again")
     return lib
 
 
@@ -84,22 +86,25 @@ if __name__ == "__main__":
     parser.set_defaults(**DEFAULT_VALUES)
     args = parser.parse_args()
 
-    assert_path_exists(args.src, "Unsigned folder does not exist, you should be using")
-    assert_path_exists(args.dst, "Folder for signed libraries does not exist, please create")
-    assert_path_exists(args.keystore, "The keystore to be used for signing is not found in")
+    for key, value in vars(args).items():
+        print(key, "=", value)
+
+    assert_path_exists(args.src, "Unsigned folder does not exist, create it or change it")
+    assert_path_exists(args.dst, "Folder for signed libraries does not exist, create it or change it")
+    assert_path_exists(args.keystore, "No keystore found at the given location")
     assert_path_exists(args.jarsigner, "JDK tool jarSigner can't be found, this file is part of any JDK installation")
     assert_path_exists(args.signtool, "Signtool can't be found, can be downloaded from Microsoft website")
 
 
     if len(os.listdir(args.src)) > 0:
-        print(f"WARN: destination folder does not seem to be empty [{str(args.dst)}]")
+        print("WARN", WARNING, f"destination folder does not seem to be empty [{str(args.dst)}]")
 
     cache = {}
     globalCacheCounter = 0
     keystorePassword = getpass.getpass("Keystore password : ")
 
     for assembly in args.src.glob('*.zip'):
-        print(f"INFO: [{assembly.name}] processing assembly file")
+        print("INFO", f"[{assembly.name}] processing assembly file")
         with zipfile.ZipFile(assembly, mode='r') as sourceZip, zipfile.ZipFile(args.dst / assembly.name, mode='x', mpression=zipfile.ZIP_DEFLATED, compresslevel=9) as targetZip:
             cacheCounter = 0
             signedCounter = 0
@@ -114,7 +119,7 @@ if __name__ == "__main__":
                             library = tempfile.NamedTemporaryFile(delete=False)
                             library.write(sourceZip.read(zipEntry))
                             library.close()
-                            print(f"  INFO: [{zipEntryPath.name}] signing library")
+                            print("  ", "INFO", f"[{zipEntryPath.name}] signing library")
                             cache[zipEntry.CRC] = sign_java_library(library, zipEntryPath.name, args.jarsigner, args.keystore, args.alias, keystorePassword, args.tsa) if is_java_library(zipEntryPath) else sign_dotnet_library(library, zipEntryPath.name, args.signtool, args.keystore, args.alias, keystorePassword, args.tsa)
                             signedCounter += 1
                         with open(library.name, 'rb') as library:
@@ -122,5 +127,5 @@ if __name__ == "__main__":
                     else:
                         targetZip.writestr(zipEntry.filename, sourceZip.read(zipEntry))
             globalCacheCounter += cacheCounter
-            print(f"INFO: [{assembly.name}] finished processing assembly file. Signed: {signedCounter}, from cache: {cacheCounter}")
-    print(f"INFO: All Done ! Signed {len(cache)} libraries, {globalCacheCounter} from cache")
+            print("INFO", f"[{assembly.name}] finished processing assembly file. Signed: {signedCounter}, from cache: {cacheCounter}")
+    print("INFO", f"All Done ! Signed {len(cache)} libraries, {globalCacheCounter} from cache")
