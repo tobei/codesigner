@@ -19,8 +19,8 @@ DEFAULT_VALUES = {
     "tsa": "http://timestamp.globalsign.com/scripts/timestamp.dll"  # alternative: http://timestamp.digicert.com
 }
 
-PROXY_HOST = "-J-Dhttp.proxyHost=proxy.bcssksz.local"
-PROXY_PORT = "-J-Dhttp.proxyPort=3128"
+PROXY_HOST = "-J-Dhttp.proxyHost=proxyusr.fediap.be"
+PROXY_PORT = "-J-Dhttp.proxyPort=8080"
 
 
 def assert_path_exists(path, error_message):
@@ -96,8 +96,8 @@ if __name__ == "__main__":
         (args.src, "Unsigned folder does not exist, create it or change it"),
         (args.dst, "Folder for signed libraries does not exist, create it or change it"),
         (args.keystore, "No keystore found at the given location"),
-        #(args.jarsigner, "JDK tool jarSigner can't be found, this file is part of any JDK installation"),
-        #(args.signtool, "Signtool can't be found, can be downloaded from Microsoft website")
+        (args.jarsigner, "JDK tool jarSigner can't be found, this file is part of any JDK installation"),
+        (args.signtool, "Signtool can't be found, can be downloaded from Microsoft website")
     ]
 
     if not all([assert_path_exists(path, error_message) for (path, error_message) in paths]):
