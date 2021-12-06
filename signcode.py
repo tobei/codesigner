@@ -14,9 +14,9 @@ DEFAULT_VALUES = {
     "dst": pathlib.Path.home() / "Desktop/signed_zips",
     "keystore": pathlib.Path("F:/SignProcess/JWS/codesigning.p12"),
     "alias": "codesigning",
-    "jarsigner": pathlib.Path('C:/Program Files/Java/jdk1.8.0_192/bin/jarsigner.exe'),
-    "signtool": pathlib.Path('C:/Program Files (x86)/Windows Kits/10/Tools/bin/i386/signtool.exe'),
-    "tsa": "http://timestamp.globalsign.com/scripts/timestamp.dll"
+    "jarsigner": pathlib.Path('C:/Program Files/Java/jdk1.8.0_281/bin/jarsigner.exe'),
+    "signtool": pathlib.Path('C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x86/signtool.exe'),
+    "tsa": "http://timestamp.globalsign.com/scripts/timestamp.dll"  # alternative: http://timestamp.digicert.com
 }
 
 PROXY_HOST = "-J-Dhttp.proxyHost=proxy.bcssksz.local"
