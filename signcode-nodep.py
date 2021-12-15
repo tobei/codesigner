@@ -5,8 +5,8 @@ import subprocess
 import getpass
 import os
 import argparse
-from cryptography.hazmat.primitives.serialization import pkcs12
-from cryptography.hazmat.primitives import hashes
+#from cryptography.hazmat.primitives.serialization import pkcs12
+#from cryptography.hazmat.primitives import hashes
 from datetime import datetime, timezone
 
 DEFAULT_VALUES = {
@@ -16,7 +16,7 @@ DEFAULT_VALUES = {
     "alias": "codesigning",
     "jarsigner": pathlib.Path('C:/Program Files/Java/jdk1.8.0_281/bin/jarsigner.exe'),
     "signtool": pathlib.Path('C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x86/signtool.exe'),
-    "tsa": "http://timestamp.globalsign.com/scripts/timestamp.dll"  # alternative: http://timestamp.digicert.com
+    "tsa": "http://timestamp.digicert.com" #"http://timestamp.globalsign.com/scripts/timestamp.dll"  # alternative: http://timestamp.digicert.com
 }
 
 PROXY_HOST = "-J-Dhttp.proxyHost=proxyusr.fediap.be"
@@ -60,11 +60,11 @@ def sign_java_library(lib, name, jarsigner_path, keystore_path, key_alias, keyst
     return lib
 
 
-def sign_dotnet_library(lib, name, signtool_path, keystore_path, key_alias, timestamp_url):
+def sign_dotnet_library(lib, name, signtool_path, keystore_path, key_alias, keystore_password, timestamp_url):
     result = subprocess.run([str(signtool_path), "verify", "/pa", lib.name], capture_output=True)
     if result.returncode != 0:
         result = subprocess.run(
-            [str(signtool_path), "sign", "/fd", "sha256", "/f", str(keystore_path), "/p", key_alias,
+            [str(signtool_path), "sign", "/fd", "sha256", "/f", str(keystore_path), "/p", keystore_password,
              lib.name], capture_output=True)
         assert_external_toolresult(name, result, "")
         result = subprocess.run([str(signtool_path), "timestamp", "/t", timestamp_url, lib.name], capture_output=True)
@@ -109,19 +109,19 @@ if __name__ == "__main__":
 
     print("INFO", f"Keystore access and content will now be evaluated")
     keystorePassword = getpass.getpass("Keystore password : ")
-    with open(args.keystore, 'rb') as p12:
-        keystore = pkcs12.load_pkcs12(p12.read(), keystorePassword.encode())
-        assert keystore.key, "No private key in this P12, can't sign"
-        assert keystore.cert, "Can't find certificate in this P12"
-        assert keystore.cert.friendly_name == args.alias.encode(), "Incorrect alias for the certificate"
-        assert keystore.cert.certificate.fingerprint(hashes.SHA256()).hex() == "3fb5cedac685b02604f5a79211c6eff4d235bd62061a0da80d4cb0a16dce2828", "Unknown certificate, if new one please update fingerprint"
-        expiresIn = keystore.cert.certificate.not_valid_after.astimezone(timezone.utc) - datetime.now(timezone.utc)
+    #with open(args.keystore, 'rb') as p12:
+    #    keystore = pkcs12.load_pkcs12(p12.read(), keystorePassword.encode())
+    #    assert keystore.key, "No private key in this P12, can't sign"
+    #    assert keystore.cert, "Can't find certificate in this P12"
+    #    assert keystore.cert.friendly_name == args.alias.encode(), "Incorrect alias for the certificate"
+    #    assert keystore.cert.certificate.fingerprint(hashes.SHA256()).hex() == "3fb5cedac685b02604f5a79211c6eff4d235bd62061a0da80d4cb0a16dce2828", "Unknown certificate, if new one please update fingerprint"
+    #    expiresIn = keystore.cert.certificate.not_valid_after.astimezone(timezone.utc) - datetime.now(timezone.utc)
 
-        if expiresIn.days < 90:
-            print("WARN", f"Signing certificate expires in {expiresIn.days} days")
-        else:
-            print("INFO", f"Signing certificate expires in {expiresIn.days} days")
-    print("INFO", f"Keystore sanity check successful")
+    #    if expiresIn.days < 90:
+    #        print("WARN", f"Signing certificate expires in {expiresIn.days} days")
+    #    else:
+    #        print("INFO", f"Signing certificate expires in {expiresIn.days} days")
+    #print("INFO", f"Keystore sanity check successful")
 
     cache = {}
     globalCacheCounter = 0
