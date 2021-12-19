@@ -16,7 +16,7 @@ DEFAULT_VALUES = {
     "alias": "codesigning",
     "jarsigner": pathlib.Path('C:/Program Files/Java/jdk1.8.0_281/bin/jarsigner.exe'),
     "signtool": pathlib.Path('C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x86/signtool.exe'),
-    "tsa": "http://timestamp.globalsign.com/scripts/timestamp.dll"  # alternative: http://timestamp.digicert.com
+    "tsa": "http://timestamp.digicert.com" # http://timestamp.globalsign.com/scripts/timestamp.dll"
 }
 
 PROXY_HOST = "-J-Dhttp.proxyHost=proxyusr.fediap.be"
