@@ -60,12 +60,10 @@ def sign_java_library(lib, name, jarsigner_path, keystore_path, key_alias, keyst
     return lib
 
 
-def sign_dotnet_library(lib, name, signtool_path, keystore_path, key_alias, timestamp_url):
+def sign_dotnet_library(lib, name, signtool_path, keystore_path, key_alias, keystore_password, timestamp_url):
     result = subprocess.run([str(signtool_path), "verify", "/pa", lib.name], capture_output=True)
     if result.returncode != 0:
-        result = subprocess.run(
-            [str(signtool_path), "sign", "/fd", "sha256", "/f", str(keystore_path), "/p", key_alias,
-             lib.name], capture_output=True)
+        result = subprocess.run([str(signtool_path), "sign", "/fd", "sha256", "/f", str(keystore_path), "/p", keystore_password, lib.name], capture_output=True)
         assert_external_toolresult(name, result, "")
         result = subprocess.run([str(signtool_path), "timestamp", "/t", timestamp_url, lib.name], capture_output=True)
         assert_external_toolresult(name, result, "")
