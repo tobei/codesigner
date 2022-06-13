@@ -22,6 +22,12 @@ DEFAULT_VALUES = {
 PROXY_HOST = "-J-Dhttp.proxyHost=proxyusr.fediap.be"
 PROXY_PORT = "-J-Dhttp.proxyPort=8080"
 
+KNOWN_SIGNERS = {
+    '53a5f430eec5918b3e141d2acca3686c7218b7b6d2c25fa9f8f68619052caf2c': 'Signer 2018-2019 - EXPIRED',
+    '3fb5cedac685b02604f5a79211c6eff4d235bd62061a0da80d4cb0a16dce2828': 'Signer 2019-2022 - Expires end of Sept 2022',
+    '337eb5c6299083554180718faf994deb2bc580f50f23c01edd1c0206f8ff2638': 'Signer 2022-2024 - From Sept 2022',
+}
+
 
 def assert_path_exists(path, error_message):
     if not path.exists():
@@ -83,6 +89,7 @@ if __name__ == "__main__":
     parser.add_argument('--jarsigner', help='java signing tool location: jarsigner.exe', type=pathlib.Path)
     parser.add_argument('--signtool', help='.NET signing tool location: signtool.exe', type=pathlib.Path)
     parser.add_argument('--tsa', help='public free timestamping server url', type=str)
+    parser.add_argument('--force_unknown', help='forces to accept an unknown certificate for signature', action='store_true')
     parser.set_defaults(**DEFAULT_VALUES)
     args = parser.parse_args()
 
@@ -112,6 +119,14 @@ if __name__ == "__main__":
         assert keystore.key, "No private key in this P12, can't sign"
         assert keystore.cert, "Can't find certificate in this P12"
         assert keystore.cert.friendly_name == args.alias.encode(), "Incorrect alias for the certificate"
+
+        fingerprint = keystore.cert.certificate.fingerprint(hashes.SHA256()).hex();
+        if args.force_unknown:
+            print("WARN", f'Known signer check disabled, using certificate with fingerprint {fingerprint}')
+        else:
+            assert fingerprint in KNOWN_SIGNERS, f"This certificate is unknown. If new, add {fingerprint} to the whitelist KNOWN_SIGNERS in the python file"
+            print("INFO", f"You will be signing with : {KNOWN_SIGNERS[fingerprint]}")
+
         assert keystore.cert.certificate.fingerprint(hashes.SHA256()).hex() == "3fb5cedac685b02604f5a79211c6eff4d235bd62061a0da80d4cb0a16dce2828", "Unknown certificate, if new one please update fingerprint"
         expiresIn = keystore.cert.certificate.not_valid_after.astimezone(timezone.utc) - datetime.now(timezone.utc)
 
